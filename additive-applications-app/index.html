@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Additive Applications</title>
+  <meta name="theme-color" content="#282156">
+  <meta name="description" content="Capture additive manufacturing application ideas from your notebook into Excel and Teams.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AM Apps">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="btn-back" aria-label="Back" hidden>‹</button>
+    <h1 id="title">Additive Applications</h1>
+    <button class="icon-btn" id="btn-settings" aria-label="Settings">⚙︎</button>
+  </header>
+
+  <main>
+    <!-- ============ SETTINGS / FIRST-RUN ============ -->
+    <section class="screen" id="screen-settings" hidden>
+      <p class="intro" id="setup-intro">Set this phone up once. Everything here stays on this device.</p>
+
+      <div class="card">
+        <h2>You</h2>
+        <label>Your name <span class="req">*</span>
+          <input id="set-name" autocomplete="name" placeholder="e.g. Miko Parkinson">
+        </label>
+        <p class="hint">Starts every Teams message and fills <b>Originator</b> on the form.</p>
+        <label>Default workstream owner
+          <input id="set-owner" placeholder="Optional. You can change it on each entry.">
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>Handwriting reader</h2>
+        <label>AI service
+          <select id="set-provider">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI</option>
+            <option value="azure">Azure OpenAI (company)</option>
+            <option value="none">None (type entries in by hand)</option>
+          </select>
+        </label>
+        <div id="ai-fields">
+          <label>API key
+            <input id="set-key" type="password" autocomplete="off" spellcheck="false">
+          </label>
+          <label id="lbl-model">Model
+            <input id="set-model" spellcheck="false" autocapitalize="off">
+          </label>
+          <div id="azure-fields" hidden>
+            <label>Azure endpoint
+              <input id="set-azure-endpoint" placeholder="https://your-resource.openai.azure.com" spellcheck="false" autocapitalize="off">
+            </label>
+            <label>Deployment name
+              <input id="set-azure-deployment" spellcheck="false" autocapitalize="off">
+            </label>
+          </div>
+          <p class="hint">The key is stored only on this phone. Photos are sent straight from this phone to the service you choose.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Microsoft Teams</h2>
+        <label>Workflow webhook URL
+          <input id="set-webhook" type="url" placeholder="https://…" spellcheck="false" autocapitalize="off">
+        </label>
+        <p class="hint">Made in Teams with the Workflows template “Post to a chat when a webhook request is received”. To move to a channel later, make a channel workflow and paste its URL here.</p>
+        <label class="check"><input type="checkbox" id="set-thumb"> Include a small part photo in the Teams message</label>
+        <p class="hint">Teams limits message size, so very detailed photos can make a post fail quietly. Leave this off if posts go missing.</p>
+        <button class="btn secondary" id="btn-test-teams" type="button">Send a test message</button>
+      </div>
+
+      <button class="btn primary big" id="btn-save-settings" type="button">Save</button>
+    </section>
+
+    <!-- ============ HOME ============ -->
+    <section class="screen" id="screen-home" hidden>
+      <button class="btn primary big" id="btn-new" type="button">＋ New application</button>
+      <div id="entry-list" class="entry-list"></div>
+      <div class="empty" id="empty-state" hidden>
+        <p>No applications yet.</p>
+        <p class="hint">Tap <b>New application</b>, check your notebook page against the list, then take a photo.</p>
+      </div>
+      <div class="export-bar" id="export-bar" hidden>
+        <button class="btn secondary" id="btn-export" type="button">Export workbook (.xlsx)</button>
+      </div>
+    </section>
+
+    <!-- ============ CAPTURE ============ -->
+    <section class="screen" id="screen-capture" hidden>
+      <details class="card checklist" id="checklist" open>
+        <summary><h2>What to write down</h2></summary>
+        <p class="hint">One line per item, in this order. Bullets or numbers both work. No need to write the labels. Put a dash for anything you skip so the order stays right.</p>
+        <div class="checklist-cols">
+          <div><h3>Required</h3><ol id="list-required"></ol></div>
+          <div><h3>Supporting</h3><ol id="list-supporting"></ol></div>
+        </div>
+      </details>
+
+      <div class="card">
+        <h2>1. Notebook page</h2>
+        <div class="thumbs" id="thumbs-notebook"></div>
+        <div class="row">
+          <label class="btn primary file-btn">📷 Take photo<input type="file" accept="image/*" capture="environment" id="in-notebook-cam" hidden></label>
+          <label class="btn secondary file-btn">🖼 Choose<input type="file" accept="image/*" multiple id="in-notebook-pick" hidden></label>
+        </div>
+        <p class="hint">Fill the frame with the page, flat and well lit. Add a second photo if the entry runs onto another page.</p>
+      </div>
+
+      <div class="card">
+        <h2>2. Part photo <span class="opt">(optional)</span></h2>
+        <div class="thumbs" id="thumbs-part"></div>
+        <div class="row">
+          <label class="btn primary file-btn">📷 Take photo<input type="file" accept="image/*" capture="environment" id="in-part-cam" hidden></label>
+          <label class="btn secondary file-btn">🖼 Choose<input type="file" accept="image/*" id="in-part-pick" hidden></label>
+        </div>
+        <p class="hint">This goes into the <b>Image</b> row of the form.</p>
+      </div>
+
+      <button class="btn primary big" id="btn-read" type="button" disabled>Read my notes</button>
+      <button class="btn link" id="btn-manual" type="button">Type it in instead</button>
+      <div class="status" id="read-status" hidden><span class="spinner"></span><span id="read-status-text">Reading your handwriting…</span></div>
+    </section>
+
+    <!-- ============ REVIEW / EDIT ============ -->
+    <section class="screen" id="screen-review" hidden>
+      <div class="warnings" id="warnings" hidden></div>
+
+      <details class="card" id="page-preview">
+        <summary><h2>Notebook page</h2></summary>
+        <div class="thumbs large" id="review-pages"></div>
+      </details>
+
+      <div class="card">
+        <h2>Who</h2>
+        <label>Originator<input id="rv-originator"></label>
+        <label>Workstream owner<input id="rv-owner"></label>
+      </div>
+
+      <div class="card">
+        <h2>Required</h2>
+        <div id="rv-required"></div>
+      </div>
+      <div class="card">
+        <h2>Supporting</h2>
+        <div id="rv-supporting"></div>
+      </div>
+      <div class="card">
+        <h2>Other notes</h2>
+        <textarea id="rv-other" rows="2" placeholder="Anything else from the page"></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary big" id="btn-save-post" type="button">Save &amp; post to Teams</button>
+        <button class="btn secondary" id="btn-save" type="button">Save only</button>
+        <button class="btn secondary" id="btn-export-one" type="button">Download this form (.xlsx)</button>
+        <button class="btn danger" id="btn-delete" type="button" hidden>Delete entry</button>
+      </div>
+      <p class="hint center" id="posted-note" hidden></p>
+    </section>
+  </main>
+
+  <div class="viewer" id="viewer" hidden><img alt="" id="viewer-img"><button class="icon-btn close" aria-label="Close">✕</button></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="vendor/jszip.min.js"></script>
+  <script src="fields.js"></script>
+  <script src="xlsx.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
