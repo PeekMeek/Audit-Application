@@ -66,7 +66,7 @@
   /* ---------- AI prompt ---------- */
   function buildPrompt() {
     const list = (arr) => arr.map((f, i) => `${i + 1}. ${f.key} — ${f.label}`).join('\n');
-    const shape = '{"listStyle":"numbered|bulleted|mixed|unclear","fields":{' +
+    const shape = '{"rotateToFix":[0],"listStyle":"numbered|bulleted|mixed|unclear","fields":{' +
       KEYS.map(k => `"${k}":{"value":"","uncertain":false}`).join(',') +
       '},"warnings":[],"extraText":""}';
     return `You are reading photos of a handwritten notebook page. The writer records one additive-manufacturing (3D printing) application idea per entry using a fixed list of fields, always in the same order. They usually do NOT write the field names; they write only the values, one per bullet point or numbered line.
@@ -78,6 +78,10 @@ ${list(REQUIRED)}
 
 SUPPORTING (in this order):
 ${list(SUPPORTING)}
+
+Page orientation:
+- A photo may be sideways or upside down, or the notebook may have been written in landscape. Read the text in its correct reading orientation no matter how the photo is turned.
+- In "rotateToFix", give one number per photo, in order: how many degrees the photo must be turned clockwise so the handwriting reads normally (left to right, top to bottom). Use only 0, 90, 180 or 270. Use 0 when the text already reads normally.
 
 How to read the page:
 - Any mark at the start of a line starts the next field. Marks include bullets and dots (• · ●), dashes (- – —), asterisks (*), plus signs (+), check marks and crosses (✓ ✔ ☑ ✗ x), boxes (☐ □ ■), arrows (→ > ➤ -> =>), stars (★ ☆), circles (o ○), tildes (~), letters such as "a)" or "b.", and numbers (1.  1)  (1)  ①). The writer may use any of these and may mix different marks on the same page.
@@ -97,6 +101,24 @@ How to read the page:
 
 Reply with JSON only, no other text, in exactly this shape:
 ${shape}`;
+  }
+
+  /* ---------- part photo orientation ---------- */
+  function buildPartOrientationPrompt() {
+    return `This is a photo of a manufactured part, possibly lying next to a ruler or tape measure. Decide how many degrees the photo must be turned clockwise so it appears the right way up.
+Judge from, in order: readable text or numbers (ruler markings, labels, stamped or printed text on the part), the direction of the ruler's numbers, the table or floor surface and background, and lighting or shadows.
+If there is no clear cue (for example a plain part on a plain background), answer 0.
+Reply with JSON only: {"rotateToFix":0,"confident":true} where rotateToFix is 0, 90, 180 or 270.`;
+  }
+  function parseOrientation(text) {
+    const s = String(text || ''), a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a < 0 || b <= a) return 0;
+    try {
+      const o = JSON.parse(s.slice(a, b + 1));
+      if (o.confident === false) return 0;
+      const n = ((Math.round(Number(o.rotateToFix) / 90) * 90) % 360 + 360) % 360;
+      return isNaN(n) ? 0 : n;
+    } catch (e) { return 0; }
   }
 
   /* ---------- AI response parsing ---------- */
@@ -122,7 +144,9 @@ ${shape}`;
       fields,
       uncertain,
       warnings: Array.isArray(obj.warnings) ? obj.warnings.map(String).filter(Boolean) : [],
-      extraText: clean(obj.extraText)
+      extraText: clean(obj.extraText),
+      rotateToFix: (Array.isArray(obj.rotateToFix) ? obj.rotateToFix : [obj.rotateToFix])
+        .map(n => { n = ((Math.round(Number(n) / 90) * 90) % 360 + 360) % 360; return isNaN(n) ? 0 : n; })
     };
   }
 
@@ -274,7 +298,7 @@ ${shape}`;
   const api = {
     REQUIRED, SUPPORTING, ALL, KEYS, byKey, TEMPLATE_ROWS,
     clean, scaleValue, confidenceMarks, urgencyHue, urgencyHex,
-    buildPrompt, parseAIResponse, validate, shiftDown, shiftUp, derive,
+    buildPrompt, parseAIResponse, buildPartOrientationPrompt, parseOrientation, validate, shiftDown, shiftUp, derive,
     buildTeamsPayload, buildTestPayload
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

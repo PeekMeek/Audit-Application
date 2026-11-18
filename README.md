@@ -121,6 +121,8 @@ Each page costs roughly a cent or two to read. Photos go straight from the phone
 - For anything you leave blank, still write the mark (alone, or with "N/A") so the count stays right. For **Photo**, a check mark on its own line means a photo was taken.
 - Writing **"Required"** and **"Supporting"** (or **R** / **S**) as headings restarts the count, which keeps any mix-up inside one section.
 - Lines without a bullet are added to the item above, so long descriptions are fine.
+- **Any orientation works.** If a page photo is sideways or upside down, the AI reports which way it's turned, and the app straightens the photo and reads it again. That second reading roughly doubles the cost for that page. You can also tap ⟳ on a photo to turn it yourself before reading.
+- **Part photos are straightened too.** When you add a part photo, the app does a quick, low-cost check of which way is up, using cues like ruler numbers, printed text and the table surface, and turns the photo if needed. If there's no clear cue, it leaves the photo as taken. ⟳ is available on part photos on both the capture and review screens.
 - If a value doesn't fit its field (words where 1–10 should be, a cost with no number), the app flags it and suggests a skipped line. Use **↓** on the first misplaced field to push it and everything below down one slot, or **↑** to remove an extra line. A value removed with ↑ goes into *Other notes*.
 
 ## How notebook items map to the Excel form

@@ -147,3 +147,4 @@ input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px); transform: translateX(-50%); z-index: 30;
   background: #222; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 4px 16px rgba(0,0,0,.3); }
 .toast.error { background: var(--danger); }
+.thumb .rot { position: absolute; bottom: 4px; left: 4px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }

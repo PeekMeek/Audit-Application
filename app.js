@@ -119,10 +119,22 @@
     const url = URL.createObjectURL(file);
     try { return await toJpeg(url, maxDim, 0.85); } finally { URL.revokeObjectURL(url); }
   }
-  function thumb(photo, onRemove) {
+  // Turn a photo clockwise by 90, 180 or 270 degrees.
+  async function rotatePhoto(photo, deg) {
+    deg = ((deg % 360) + 360) % 360;
+    if (!deg) return photo;
+    const img = await imageFrom(photo.dataUrl);
+    const w = img.naturalWidth, h = img.naturalHeight, swap = deg === 90 || deg === 270;
+    const c = document.createElement('canvas'); c.width = swap ? h : w; c.height = swap ? w : h;
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width / 2, c.height / 2); ctx.rotate(deg * Math.PI / 180); ctx.drawImage(img, -w / 2, -h / 2);
+    return { dataUrl: c.toDataURL('image/jpeg', 0.88), w: c.width, h: c.height };
+  }
+  function thumb(photo, onRemove, onRotate) {
     return el('div', { class: 'thumb' },
       el('img', { src: photo.dataUrl, alt: '', onclick: () => view(photo.dataUrl) }),
-      onRemove ? el('button', { class: 'x', 'aria-label': 'Remove photo', onclick: onRemove, text: '✕' }) : null);
+      onRemove ? el('button', { class: 'x', 'aria-label': 'Remove photo', onclick: onRemove, text: '✕' }) : null,
+      onRotate ? el('button', { class: 'rot', 'aria-label': 'Rotate photo', title: 'Rotate', onclick: onRotate, text: '⟳' }) : null);
   }
 
   /* ================= settings screen ================= */
@@ -240,8 +252,12 @@
     show('capture', 'New application');
   }
   function renderCapture() {
-    $('#thumbs-notebook').replaceChildren(...cap.notebook.map((p, i) => thumb(p, () => { cap.notebook.splice(i, 1); renderCapture(); })));
-    $('#thumbs-part').replaceChildren(...(cap.part ? [thumb(cap.part, () => { cap.part = null; renderCapture(); })] : []));
+    $('#thumbs-notebook').replaceChildren(...cap.notebook.map((p, i) => thumb(p,
+      () => { cap.notebook.splice(i, 1); renderCapture(); },
+      async () => { cap.notebook[i] = await rotatePhoto(cap.notebook[i], 90); renderCapture(); })));
+    $('#thumbs-part').replaceChildren(...(cap.part ? [thumb(cap.part,
+      () => { cap.part = null; renderCapture(); },
+      async () => { cap.part = await rotatePhoto(cap.part, 90); renderCapture(); })] : []));
     const ai = settings.provider !== 'none';
     $('#btn-read').hidden = !ai;
     $('#btn-read').disabled = cap.notebook.length === 0;
@@ -254,7 +270,17 @@
     for (const f of files) {
       try {
         const p = await fileToPhoto(f, kind === 'part' ? PART_MAX : NOTEBOOK_MAX);
-        if (kind === 'part') cap.part = p; else cap.notebook.push(p);
+        if (kind === 'part') {
+          cap.part = p;
+          autoStraightenPart(() => cap.part, (np) => {
+            const old = cap.part; cap.part = np;
+            if (current === 'capture') renderCapture();
+            // If the review screen already opened with this photo, update it there too.
+            if (draft && draft.isNew && draft.entry.partPhoto && draft.entry.partPhoto.dataUrl === old.dataUrl) {
+              draft.entry.partPhoto = np; renderFields(collectFields());
+            }
+          });
+        } else cap.notebook.push(p);
       } catch (e) { toast(e.message, true); }
     }
     if (kind === 'notebook' && cap.notebook.length) $('#checklist').open = false;
@@ -274,7 +300,16 @@
     btn.disabled = true; $('#read-status').hidden = false;
     $('#read-status-text').textContent = 'Reading your handwriting…';
     try {
-      const result = await readWithAI(cap.notebook);
+      let result = await readWithAI(cap.notebook);
+      // If a page was sideways or upside down, straighten it and read once more for best accuracy.
+      const turns = cap.notebook.map((_, i) => result.rotateToFix[i] || 0);
+      if (turns.some(Boolean)) {
+        $('#read-status-text').textContent = 'The page was turned. Straightening it and reading again…';
+        cap.notebook = await Promise.all(cap.notebook.map((p, i) => rotatePhoto(p, turns[i])));
+        renderCapture();
+        try { result = await readWithAI(cap.notebook); }
+        catch (e) { /* keep the first reading if the second one fails */ }
+      }
       openReview(newEntry(result.fields, result.extraText), true, result);
     } catch (e) {
       toast(e.message, true);
@@ -294,7 +329,10 @@
 
   /* ================= AI ================= */
   async function readWithAI(photos) {
-    const s = settings, prompt = F.buildPrompt();
+    return F.parseAIResponse(await askAI(photos, F.buildPrompt(), 3000));
+  }
+  async function askAI(photos, prompt, maxTokens) {
+    const s = settings;
     let res, text;
     try {
       if (s.provider === 'anthropic') {
@@ -302,7 +340,7 @@
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({
-            model: s.model || DEFAULT_MODELS.anthropic, max_tokens: 3000,
+            model: s.model || DEFAULT_MODELS.anthropic, max_tokens: maxTokens || 3000,
             messages: [{ role: 'user', content: photos.map(p => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.dataUrl.split(',')[1] } })).concat([{ type: 'text', text: prompt }]) }]
           })
         });
@@ -337,7 +375,27 @@
     }
     if (s.provider === 'anthropic') text = ((j && j.content) || []).filter(c => c.type === 'text').map(c => c.text).join('');
     else text = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    return F.parseAIResponse(text);
+    return text;
+  }
+
+  /* Part photos: ask the AI which way is up and straighten automatically (small, low-cost check). */
+  const aiReady = () => settings.provider !== 'none' && !!settings.apiKey;
+  async function partPhotoTurn(photo) {
+    const small = await toJpeg(photo.dataUrl, 768, 0.7);
+    const text = await askAI([small], F.buildPartOrientationPrompt(), 200);
+    return F.parseOrientation(text);
+  }
+  // Runs in the background after a part photo is added. `get`/`set` read and replace the photo
+  // wherever it lives (capture screen or review screen), only if it hasn't changed meanwhile.
+  async function autoStraightenPart(get, set) {
+    const original = get();
+    if (!original || !aiReady()) return;
+    try {
+      const deg = await partPhotoTurn(original);
+      if (!deg || get() !== original) return;
+      set(await rotatePhoto(original, deg));
+      toast('Part photo straightened. Tap ⟳ if it\'s still not right.');
+    } catch (e) { /* leave the photo as taken; the ⟳ button is still there */ }
   }
 
   /* ================= Teams ================= */
@@ -414,11 +472,17 @@
       const renderPhoto = () => {
         const p = draft.entry.partPhoto;
         box.replaceChildren(
-          p ? thumb(p, () => { draft.entry.partPhoto = null; draft.dirty = true; renderPhoto(); }) : el('span', { class: 'hint', text: 'No part photo' }),
+          p ? thumb(p, () => { draft.entry.partPhoto = null; draft.dirty = true; renderPhoto(); },
+            async () => { draft.entry.partPhoto = await rotatePhoto(draft.entry.partPhoto, 90); draft.dirty = true; renderPhoto(); })
+            : el('span', { class: 'hint', text: 'No part photo' }),
           el('label', { class: 'btn secondary file-btn' }, p ? 'Replace' : '📷 Add part photo',
             el('input', { type: 'file', accept: 'image/*', hidden: true, onchange: async (ev) => {
               const file = ev.target.files && ev.target.files[0]; if (!file) return;
-              try { draft.entry.partPhoto = await fileToPhoto(file, PART_MAX); draft.dirty = true; renderPhoto(); } catch (e) { toast(e.message, true); }
+              try {
+                draft.entry.partPhoto = await fileToPhoto(file, PART_MAX); draft.dirty = true; renderPhoto();
+                const d = draft;
+                autoStraightenPart(() => d.entry.partPhoto, (np) => { d.entry.partPhoto = np; if (draft === d) renderPhoto(); });
+              } catch (e) { toast(e.message, true); }
             } })));
       };
       renderPhoto();
