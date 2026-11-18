@@ -80,11 +80,14 @@ SUPPORTING (in this order):
 ${list(SUPPORTING)}
 
 How to read the page:
-- Each new bullet (•, ·, -, *, o, →, ☐) or number (1.  1)  (1)  ①) starts the next field. Lines without a marker continue the previous field.
-- If the items are numbered, use the number to place the value (number 7 under REQUIRED is partSize), even if some numbers are skipped. If the items are bulleted, use their order.
+- Any mark at the start of a line starts the next field. Marks include bullets and dots (• · ●), dashes (- – —), asterisks (*), plus signs (+), check marks and crosses (✓ ✔ ☑ ✗ x), boxes (☐ □ ■), arrows (→ > ➤ -> =>), stars (★ ☆), circles (o ○), tildes (~), letters such as "a)" or "b.", and numbers (1.  1)  (1)  ①). The writer may use any of these and may mix different marks on the same page.
+- The mark itself is not part of the value: return only the text after it.
+- A line holding only a mark, or a mark followed by "N/A", "—" or "-", is a field left blank on purpose. For photo, a line with only a mark (especially a check mark) means a photo was taken: return "✓".
+- Lines without a mark continue the previous field. If the page uses no marks at all, treat each new line as the next field unless it is clearly the wrapped continuation of the line above (it starts in lowercase or finishes the previous sentence).
+- If the items are numbered, use the number to place the value (number 7 under REQUIRED is partSize), even if some numbers are skipped. If the items use other marks, use their order.
 - A heading such as "Required", "Req", "R", "Supporting", "Support", "S", or a drawn divider line starts a section and restarts the count. If there is no supporting heading, items after the 11th go to SUPPORTING in order.
 - If the writer did write a field label (for example "EAU: 500"), use the label to place the value and leave the label out of the value.
-- "N/A", "—", "-", "x" or a check mark mean the field was left blank on purpose: return "" (for photo, return "✓" if it is checked).
+- When the text after the mark is just "N/A", "—", "-" or "x", the field was left blank on purpose: return "".
 - Transcribe the handwriting as written. Invent nothing. Keep units, $ signs and abbreviations. Fix only obvious misspellings you are sure about.
 - urgency and confidence should be numbers from 1 to 10. Return just the number when you can read one.
 - If a value does not fit its field (for example words where a 1-10 number is expected), a bullet was probably skipped or added. Still place values by position, mark the affected fields uncertain, and explain in warnings.

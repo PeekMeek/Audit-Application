@@ -4,7 +4,7 @@ A phone app (PWA) for logging additive manufacturing application ideas:
 
 1. Check your notebook page against the **Required** and **Supporting** lists shown in the app.
 2. Take a photo of the page, plus an optional photo of the part.
-3. The AI reads your handwriting and fills in each field by its position. Bullets or numbers both work, and you don't need to write the labels.
+3. The AI reads your handwriting and fills in each field by its position. Any mark at the start of a line works (bullets, dashes, check marks, numbers…), and you don't need to write the labels.
 4. Review the fields. The urgency slider runs from green (1) to red (10), and confidence runs from **!** to **!?!?!?!?**. Fix any lines that landed in the wrong slot with the ↓ / ↑ buttons.
 5. **Save & post to Teams.** The message starts with your name.
 6. **Export workbook** gives you one `.xlsx` file with a **Summary** tab plus one tab per application in the "Additive Application" form layout, with the part photo in the Image row.
@@ -116,9 +116,9 @@ Each page costs roughly a cent or two to read. Photos go straight from the phone
 
 ## How the notebook is read
 
-- Write the items **in the order shown in the app**. Bullets (•, -, *) and numbers (1., 1)) both work, and so does a mix.
+- Write the items **in the order shown in the app**. Start each line with any mark: bullets (•), dashes (-), asterisks (*), check marks (✓), boxes (☐), arrows (→), letters (a)) or numbers (1., 1)). Mixing different marks works too.
 - **Numbered lines are safest.** The AI places each value by its number, so a skipped item can't shift the rest.
-- With bullets, keep a bullet with **"—" or "N/A"** for anything you leave blank, so the count stays right. For **Photo**, a check mark is fine.
+- For anything you leave blank, still write the mark (alone, or with "N/A") so the count stays right. For **Photo**, a check mark on its own line means a photo was taken.
 - Writing **"Required"** and **"Supporting"** (or **R** / **S**) as headings restarts the count, which keeps any mix-up inside one section.
 - Lines without a bullet are added to the item above, so long descriptions are fine.
 - If a value doesn't fit its field (words where 1–10 should be, a cost with no number), the app flags it and suggests a skipped line. Use **↓** on the first misplaced field to push it and everything below down one slot, or **↑** to remove an extra line. A value removed with ↑ goes into *Other notes*.
