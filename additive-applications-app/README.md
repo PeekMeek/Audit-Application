@@ -16,11 +16,64 @@ Entries are saved on the phone, so the export always includes everything you've 
 ## 1. Put it on GitHub Pages
 
 1. On GitHub, create a new repository, for example `additive-applications`. **Public** is required for free GitHub Pages. Nothing secret is in these files.
-2. Upload every file and folder in this zip, keeping the folders (`icons/`, `vendor/`). Use **Add file → Upload files** and drag in the contents of the folder, not the folder itself.
+2. Get the files into the repo, either by pushing from PowerShell (section 1b, recommended) or with **Add file → Upload files** on the website. If you upload, drag in the contents of the folder, not the folder itself, and keep the `icons/` and `vendor/` folders.
 3. Go to **Settings → Pages → Build and deployment**, set the source to **Deploy from a branch**, pick `main` and `/ (root)`, then **Save**.
 4. After a minute the app is live at `https://<your-username>.github.io/additive-applications/`.
 
-**Updating later:** upload the changed files, then change `VERSION` at the top of `sw.js` (for example `aa-v1` → `aa-v2`) so phones pick up the new version. Close and reopen the app twice if it still shows the old version.
+**Updating later:** the easiest way is to push from PowerShell (next section). If you upload files by hand instead, also change `VERSION` at the top of `sw.js` (for example `aa-v2` → `aa-v3`) so phones pick up the new version. Close and reopen the app twice if it still shows the old version.
+
+## 1b. Pushing updates from PowerShell
+
+**One-time setup**
+
+1. Install Git (skip this if `git --version` already works):
+   ```powershell
+   winget install --id Git.Git -e
+   ```
+   Then close and reopen PowerShell.
+2. Tell Git who you are:
+   ```powershell
+   git config --global user.name "Your Name"
+   git config --global user.email "you@example.com"
+   ```
+3. Unzip this app somewhere permanent, for example `Documents\additive-applications`, and connect the folder to GitHub.
+
+   **If the GitHub repo is new and empty** (create it on github.com **without** a README):
+   ```powershell
+   cd "$HOME\Documents\additive-applications"
+   git init -b main
+   git add -A
+   git commit -m "Trial version"
+   git remote add origin https://github.com/<your-username>/additive-applications.git
+   git push -u origin main
+   ```
+   **If you already uploaded the files on the website,** clone the repo instead, then copy the newest files into the cloned folder:
+   ```powershell
+   cd "$HOME\Documents"
+   git clone https://github.com/<your-username>/additive-applications.git
+   ```
+   The first push opens a browser window to sign in to GitHub. After that, Windows remembers the sign-in.
+4. Let PowerShell run the publish script. Do this once:
+   ```powershell
+   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+   Unblock-File .\publish.ps1
+   ```
+   `Unblock-File` is needed because the script came from a downloaded zip.
+
+**Every update after that**
+```powershell
+cd "$HOME\Documents\additive-applications"
+.\publish.ps1 "What you changed"
+```
+The script bumps the cache version in `sw.js`, commits, and pushes. GitHub Pages updates about a minute later.
+
+If you'd rather not use the script:
+```powershell
+git add -A
+git commit -m "What you changed"
+git push
+```
+Remember to bump `VERSION` in `sw.js` yourself.
 
 ## 2. Install it on your phone
 
@@ -99,6 +152,8 @@ Below the form, each tab also has a **Notebook Details** section with every item
 | `xlsx.js` | Builds the Excel workbook on the phone |
 | `vendor/jszip.min.js` | Zip library used to write `.xlsx` files (MIT licence) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Makes it installable and lets it open offline |
+| `publish.ps1` | Pushes updates to GitHub from PowerShell |
+| `.gitignore`, `.gitattributes` | Git settings (keeps exported spreadsheets and Windows thumbnail files out of the repo) |
 
 To change the field list or the Excel row labels, edit the lists at the top of `fields.js`.
 

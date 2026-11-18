@@ -349,9 +349,19 @@
   }
   async function postEntry(entry) {
     if (!settings.webhook) throw new Error('Add the Teams webhook URL in Settings to post.');
-    let thumbUrl = null;
-    if (settings.thumb && entry.partPhoto) thumbUrl = (await toJpeg(entry.partPhoto.dataUrl, 320, 0.6)).dataUrl;
-    await sendToTeams(settings.webhook, F.buildTeamsPayload(entry, { thumbnailDataUrl: thumbUrl }));
+    // Teams rejects messages over ~28 KB, so keep the whole card under a safe budget.
+    const BUDGET = 22000;
+    let payload = F.buildTeamsPayload(entry);
+    const textSize = JSON.stringify(payload).length;
+    if (settings.thumb && entry.partPhoto && textSize < BUDGET - 3000) {
+      const room = BUDGET - textSize;
+      const tries = [[320, 0.6], [260, 0.55], [220, 0.5], [180, 0.45], [140, 0.4]];
+      for (const [dim, q] of tries) {
+        const t = (await toJpeg(entry.partPhoto.dataUrl, dim, q)).dataUrl;
+        if (t.length <= room) { payload = F.buildTeamsPayload(entry, { thumbnailDataUrl: t }); break; }
+      }
+    }
+    await sendToTeams(settings.webhook, payload);
   }
 
   /* ================= review ================= */
