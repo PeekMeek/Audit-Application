@@ -424,9 +424,14 @@
     }
     // Entry data for the workflow's SharePoint Excel steps (ignored by the Teams card step).
     let photo = null;
+    // The workflow accepts at most 256 KB per request, so keep the Excel photo well under that.
     if (entry.partPhoto) {
-      const p = await toJpeg(entry.partPhoto.dataUrl, 1200, 0.8);
-      photo = { base64: p.dataUrl.split(',')[1], w: p.w, h: p.h };
+      const tries = [[1200, 0.8], [1000, 0.75], [850, 0.7], [700, 0.65], [560, 0.6], [440, 0.55]];
+      for (const [dim, q] of tries) {
+        const p = await toJpeg(entry.partPhoto.dataUrl, dim, q);
+        const b64 = p.dataUrl.split(',')[1];
+        if (b64.length <= 150000 || dim === 440) { photo = { base64: b64, w: p.w, h: p.h }; break; }
+      }
     }
     payload.entry = F.buildEntryData(entry, photo);
     await sendToTeams(settings.webhook, payload);
