@@ -1,6 +1,6 @@
 /* Offline support: caches the app files so it opens without a connection.
    Bump VERSION whenever you upload changed files so phones pick them up. */
-const VERSION = 'aa-v3';
+const VERSION = 'aa-v2';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'fields.js', 'xlsx.js', 'vendor/jszip.min.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

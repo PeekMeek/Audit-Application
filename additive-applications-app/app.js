@@ -22,7 +22,7 @@
   const SETTINGS_KEY = 'aa.settings.v1';
   let settings = loadSettings();
   function loadSettings() {
-    try { return Object.assign({ name: '', owner: '', provider: 'anthropic', apiKey: '', model: '', azureEndpoint: '', azureDeployment: '', webhook: '', thumb: false }, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+    try { return Object.assign({ name: '', owner: '', folder: '', provider: 'anthropic', apiKey: '', model: '', azureEndpoint: '', azureDeployment: '', webhook: '', thumb: false }, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
     catch (e) { return { name: '', owner: '', provider: 'anthropic', apiKey: '', model: '', azureEndpoint: '', azureDeployment: '', webhook: '', thumb: false }; }
   }
   function saveSettingsToStore() {
@@ -101,6 +101,7 @@
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
   const urgColor = n => `hsl(${F.urgencyHue(n)} 70% 42%)`;
+  const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
   /* ================= images ================= */
@@ -141,6 +142,7 @@
   function openSettings() {
     $('#set-name').value = settings.name;
     $('#set-owner').value = settings.owner;
+    $('#set-folder').value = settings.folder || '';
     $('#set-provider').value = settings.provider;
     $('#set-key').value = settings.apiKey;
     $('#set-model').value = settings.model || DEFAULT_MODELS[settings.provider] || '';
@@ -168,6 +170,7 @@
     return Object.assign({}, settings, {
       name: $('#set-name').value.trim(),
       owner: $('#set-owner').value.trim(),
+      folder: $('#set-folder').value.trim() || firstName($('#set-name').value),
       provider: $('#set-provider').value,
       apiKey: $('#set-key').value.trim(),
       model: $('#set-model').value.trim(),
@@ -321,7 +324,7 @@
     const now = new Date().toISOString();
     return {
       id: uid(), createdAt: now, updatedAt: now, postedAt: null,
-      originator: settings.name, workstreamOwner: settings.owner,
+      originator: settings.name, workstreamOwner: settings.owner, notesFolder: settings.folder || firstName(settings.name),
       fields: Object.assign(Object.fromEntries(F.KEYS.map(k => [k, ''])), fields),
       otherNotes: otherNotes || '', notebookPhotos: cap.notebook.slice(), partPhoto: cap.part
     };
@@ -419,6 +422,13 @@
         if (t.length <= room) { payload = F.buildTeamsPayload(entry, { thumbnailDataUrl: t }); break; }
       }
     }
+    // Entry data for the workflow's SharePoint Excel steps (ignored by the Teams card step).
+    let photo = null;
+    if (entry.partPhoto) {
+      const p = await toJpeg(entry.partPhoto.dataUrl, 1200, 0.8);
+      photo = { base64: p.dataUrl.split(',')[1], w: p.w, h: p.h };
+    }
+    payload.entry = F.buildEntryData(entry, photo);
     await sendToTeams(settings.webhook, payload);
   }
 
@@ -434,6 +444,7 @@
     ['urgency', 'confidence'].forEach(k => { draft.raw[k] = entry.fields[k] || ''; });
     $('#rv-originator').value = entry.originator || '';
     $('#rv-owner').value = entry.workstreamOwner || '';
+    $('#rv-folder').value = entry.notesFolder || settings.folder || firstName(settings.name);
     $('#rv-other').value = entry.otherNotes || '';
     $('#review-pages').replaceChildren(...(entry.notebookPhotos || []).map(p => thumb(p)));
     $('#page-preview').hidden = !(entry.notebookPhotos || []).length;
@@ -461,7 +472,7 @@
     const row = el('div', { class: 'field' + (draft.flagged.has(f.key) ? ' flag' : ''), 'data-key': f.key });
     const unflag = () => { row.classList.remove('flag'); draft.flagged.delete(f.key); draft.dirty = true; };
     row.append(el('div', { class: 'field-head' },
-      el('span', { class: 'num', text: i + 1 }),
+      el('span', { class: 'num', text: F.fieldNumber(f.key) }),
       el('span', { class: 'lbl', text: f.label }),
       el('button', { class: 'shift', type: 'button', title: 'A line was skipped above: move this and everything below down one', 'aria-label': 'Shift down from here', text: '↓', onclick: () => doShift(f.key, 'down') }),
       el('button', { class: 'shift', type: 'button', title: 'This is an extra line: remove it and move everything below up one', 'aria-label': 'Shift up into here', text: '↑', onclick: () => doShift(f.key, 'up') })));
@@ -556,6 +567,7 @@
     e.fields = collectFields();
     e.originator = $('#rv-originator').value.trim();
     e.workstreamOwner = $('#rv-owner').value.trim();
+    e.notesFolder = $('#rv-folder').value.trim();
     e.otherNotes = $('#rv-other').value.trim();
     e.updatedAt = new Date().toISOString();
     return e;
@@ -591,7 +603,7 @@
     if (!confirm('Delete this entry from this phone? Anything already posted to Teams stays there.')) return;
     try { await DB.del(draft.entry.id); toast('Deleted'); goHome(); } catch (e) { toast('Couldn\'t delete: ' + e.message, true); }
   });
-  ['#rv-originator', '#rv-owner', '#rv-other'].forEach(s => $(s).addEventListener('input', () => { if (draft) draft.dirty = true; }));
+  ['#rv-originator', '#rv-owner', '#rv-folder', '#rv-other'].forEach(s => $(s).addEventListener('input', () => { if (draft) draft.dirty = true; }));
 
   /* ================= start ================= */
   renderChecklist();

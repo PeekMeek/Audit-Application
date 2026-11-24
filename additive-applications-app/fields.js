@@ -65,7 +65,7 @@
 
   /* ---------- AI prompt ---------- */
   function buildPrompt() {
-    const list = (arr) => arr.map((f, i) => `${i + 1}. ${f.key} — ${f.label}`).join('\n');
+    const list = (arr, start) => arr.map((f, i) => `${start + i}. ${f.key} — ${f.label}`).join('\n');
     const shape = '{"rotateToFix":[0],"listStyle":"numbered|bulleted|mixed|unclear","fields":{' +
       KEYS.map(k => `"${k}":{"value":"","uncertain":false}`).join(',') +
       '},"warnings":[],"extraText":""}';
@@ -73,11 +73,11 @@
 
 The list has two sections.
 
-REQUIRED (in this order):
-${list(REQUIRED)}
+REQUIRED (items 1-11, in this order):
+${list(REQUIRED, 1)}
 
-SUPPORTING (in this order):
-${list(SUPPORTING)}
+SUPPORTING (items 12-18, in this order; the numbering continues from REQUIRED):
+${list(SUPPORTING, 12)}
 
 Page orientation:
 - A photo may be sideways or upside down, or the notebook may have been written in landscape. Read the text in its correct reading orientation no matter how the photo is turned.
@@ -88,8 +88,8 @@ How to read the page:
 - The mark itself is not part of the value: return only the text after it.
 - A line holding only a mark, or a mark followed by "N/A", "—" or "-", is a field left blank on purpose. For photo, a line with only a mark (especially a check mark) means a photo was taken: return "✓".
 - Lines without a mark continue the previous field. If the page uses no marks at all, treat each new line as the next field unless it is clearly the wrapped continuation of the line above (it starts in lowercase or finishes the previous sentence).
-- If the items are numbered, use the number to place the value (number 7 under REQUIRED is partSize), even if some numbers are skipped. If the items use other marks, use their order.
-- A heading such as "Required", "Req", "R", "Supporting", "Support", "S", or a drawn divider line starts a section and restarts the count. If there is no supporting heading, items after the 11th go to SUPPORTING in order.
+- If the items are numbered, use the number to place the value (7 is partSize, 12 is eau, 18 is customerQuote), even if some numbers are skipped. The writer normally keeps counting from 12 to 18 for SUPPORTING; if they restart at 1 under a "Supporting" heading instead, 1-7 there mean items 12-18. If the items use other marks, use their order.
+- Headings such as "Required" or "Supporting" (or "R" / "S", or a drawn divider line) may appear. Items after the 11th belong to SUPPORTING in order, with or without a heading.
 - If the writer did write a field label (for example "EAU: 500"), use the label to place the value and leave the label out of the value.
 - When the text after the mark is just "N/A", "—", "-" or "x", the field was left blank on purpose: return "".
 - Transcribe the handwriting as written. Invent nothing. Keep units, $ signs and abbreviations. Fix only obvious misspellings you are sure about.
@@ -295,7 +295,39 @@ Reply with JSON only: {"rotateToFix":0,"confident":true} where rotateToFix is 0,
     };
   }
 
+  // Number shown next to each field: 1-11 for Required, 12-18 for Supporting.
+  function fieldNumber(key) { return KEYS.indexOf(key) + 1; }
+
+  /* ---------- data sent to the workflow for SharePoint Excel ---------- */
+  function buildEntryData(entry, photo) {
+    const d = derive(entry);
+    const f = entry.fields || {};
+    return {
+      v: 1,
+      id: entry.id,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+      originator: entry.originator || '',
+      notesFolder: (entry.notesFolder || '').trim(),
+      workstreamOwner: entry.workstreamOwner || '',
+      rows: {
+        originator: d.originator, department: d.department, workstreamOwner: d.workstreamOwner,
+        appName: d.appName, appDesc: d.appDesc, issue: d.issue, partInfo: d.partInfo,
+        additiveNotes: d.additiveNotes, customerUsage: d.customerUsage,
+        urgency: d.urgency ? String(d.urgency) : '', confidenceText: d.confidenceText, customerInput: d.customerInput
+      },
+      urgency: d.urgency || 0,
+      confidence: d.confidence || 0,
+      eau: clean(f.eau),
+      suggestedAM: clean(f.suggestedAM),
+      details: ALL.map(x => ({ n: fieldNumber(x.key), label: x.label, value: x.key === 'photo' ? (entry.partPhoto ? 'Part photo attached (see Image above)' : (f.photo || '')) : (f[x.key] || '') })),
+      otherNotes: entry.otherNotes || '',
+      photo: photo || null
+    };
+  }
+
   const api = {
+    fieldNumber, buildEntryData,
     REQUIRED, SUPPORTING, ALL, KEYS, byKey, TEMPLATE_ROWS,
     clean, scaleValue, confidenceMarks, urgencyHue, urgencyHex,
     buildPrompt, parseAIResponse, buildPartOrientationPrompt, parseOrientation, validate, shiftDown, shiftUp, derive,

@@ -11,6 +11,8 @@ A phone app (PWA) for logging additive manufacturing application ideas:
 
 Entries are saved on the phone, so the export always includes everything you've logged on that device.
 
+**SharePoint:** the Teams workflow can also add each entry as a new tab in the person's own workbook on SharePoint, plus a shared **Audit Summary.xlsx**. Setup is in [`sharepoint/SHAREPOINT-SETUP.md`](sharepoint/SHAREPOINT-SETUP.md). The phone's own Download and Export buttons stay available as a backup.
+
 ---
 
 ## 1. Put it on GitHub Pages
@@ -117,6 +119,7 @@ Each page costs roughly a cent or two to read. Photos go straight from the phone
 ## How the notebook is read
 
 - Write the items **in the order shown in the app**. Start each line with any mark: bullets (•), dashes (-), asterisks (*), check marks (✓), boxes (☐), arrows (→), letters (a)) or numbers (1., 1)). Mixing different marks works too.
+- **Items are numbered 1–18 straight through.** Required is 1–11 and Supporting continues at 12–18. Restarting at 1 under a "Supporting" heading works too.
 - **Numbered lines are safest.** The AI places each value by its number, so a skipped item can't shift the rest.
 - For anything you leave blank, still write the mark (alone, or with "N/A") so the count stays right. For **Photo**, a check mark on its own line means a photo was taken.
 - Writing **"Required"** and **"Supporting"** (or **R** / **S**) as headings restarts the count, which keeps any mix-up inside one section.
@@ -155,6 +158,7 @@ Below the form, each tab also has a **Notebook Details** section with every item
 | `vendor/jszip.min.js` | Zip library used to write `.xlsx` files (MIT licence) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Makes it installable and lets it open offline |
 | `publish.ps1` | Pushes updates to GitHub from PowerShell |
+| `sharepoint/` | The two Office Scripts and the setup guide for writing entries into SharePoint Excel |
 | `.gitignore`, `.gitattributes` | Git settings (keeps exported spreadsheets and Windows thumbnail files out of the repo) |
 
 To change the field list or the Excel row labels, edit the lists at the top of `fields.js`.

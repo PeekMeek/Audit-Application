@@ -148,7 +148,7 @@
       list.forEach((f, i) => {
         let v = (entry.fields || {})[f.key] || '';
         if (f.key === 'photo') v = entry.partPhoto ? 'Part photo attached (see Image above)' : (v || '');
-        sh.set(r, 1, `${i + 1}. ${f.label}`, S.label); sh.set(r, 2, v, S.value);
+        sh.set(r, 1, `${F.fieldNumber(f.key)}. ${f.label}`, S.label); sh.set(r, 2, v, S.value);
         sh.heights[r] = heightFor(Math.max(linesFor(f.label, WA), linesFor(v, WB))); r++;
       });
     }

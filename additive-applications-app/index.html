@@ -35,6 +35,10 @@
         <label>Default workstream owner
           <input id="set-owner" placeholder="Optional. You can change it on each entry.">
         </label>
+        <label>Notes folder name
+          <input id="set-folder" placeholder="e.g. Miko" autocapitalize="words">
+        </label>
+        <p class="hint">Must match your SharePoint folder: <b>Miko</b> for “Miko Notes” and “3_Workstream_Template_Miko.xlsx”. Defaults to your first name.</p>
       </div>
 
       <div class="card">
@@ -100,7 +104,7 @@
         <p class="hint">One line per item, in this order. Start each line with any mark (•, -, *, ✓, →, a number…) and mix them if you like. No need to write the labels. For anything you skip, write the mark with nothing after it so the order stays right.</p>
         <div class="checklist-cols">
           <div><h3>Required</h3><ol id="list-required"></ol></div>
-          <div><h3>Supporting</h3><ol id="list-supporting"></ol></div>
+          <div><h3>Supporting</h3><ol id="list-supporting" start="12"></ol></div>
         </div>
       </details>
 
@@ -142,6 +146,7 @@
         <h2>Who</h2>
         <label>Originator<input id="rv-originator"></label>
         <label>Workstream owner<input id="rv-owner"></label>
+        <label>Notes folder (SharePoint)<input id="rv-folder"></label>
       </div>
 
       <div class="card">
